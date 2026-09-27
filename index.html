@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#25D366">
+<title>Pick & Reveal — Online</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header>
+    <div class="avatar" id="avatar">❤️</div>
+    <div class="headtext">
+      <b id="title">Pick & Reveal</b>
+      <span id="status">Create a room to start</span>
+    </div>
+    <button class="iconbtn" id="leaveBtn" hidden>↪</button>
+  </header>
+
+  <main class="chat" id="chat">
+    <div class="system">🎲 PICK & REVEAL<br>100 hidden questions & dares</div>
+    <div class="card" id="lobby">
+      <h2>Play together online</h2>
+      <p>Create a private room and send the invite link to the other player.</p>
+      <input id="nameInput" maxlength="18" placeholder="Your name">
+      <div class="row">
+        <button class="btn primary" id="createBtn">Create room</button>
+        <button class="btn secondary" id="joinBtn">Join room</button>
+      </div>
+      <div id="joinArea" hidden>
+        <input id="codeInput" maxlength="6" placeholder="6-character room code">
+        <button class="btn primary full" id="joinRoomBtn">Join</button>
+      </div>
+      <div id="roomInfo" hidden></div>
+    </div>
+    <div id="gameArea" hidden></div>
+  </main>
+
+  <div class="controls" id="controls" hidden>
+    <div class="mode">
+      <button id="wa" class="active">WhatsApp</button>
+      <button id="snap">Snapchat</button>
+    </div>
+    <div class="row">
+      <button class="btn secondary" id="randomBtn">🎲 Random</button>
+      <button class="btn secondary" id="switchBtn">🔄 Switch</button>
+      <button class="btn primary" id="copyBtn">🔗 Copy invite</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="reveal">
+    <span class="tag" id="rTag">QUESTION</span>
+    <h2 id="rNumber">#50</h2>
+    <p id="rText"></p>
+    <button class="btn primary full" id="doneBtn">Done — next turn</button>
+    <div class="small">Have fun. Either player can skip anything they're uncomfortable answering.</div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+import { getDatabase, ref, set, get, update, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.firebasestorage.app",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const prompts = [["QUESTION","What was your first impression of me?"],["DARE","Send a selfie right now without retaking it."],["FLIRTY","Describe my vibe using exactly three words."],["QUESTION","What is something you secretly find attractive about me?"],["DARE","Send a voice note saying my name in your most dramatic voice."],["DEEP","What is one thing you wish people understood about you?"],["WOULD YOU RATHER","Would you rather have a spontaneous date or a carefully planned one?"],["FUNNY","What is the most embarrassing thing you've done to impress someone?"],["DARE","Use only emojis to describe how you feel about me. No words."],["QUESTION","What song reminds you of us or this conversation?"],["BOLD","What is one question you've wanted to ask me but were scared to?"],["DARE","Take a random photo of something near you and send it."],["DEEP","What makes you feel genuinely appreciated?"],["QUESTION","If we could go anywhere tonight, where would you take me?"],["FLIRTY","Give me a nickname you think actually suits me."],["DARE","Send the last saved meme in your gallery."],["QUESTION","What is one thing you would change about your first impression of me?"],["WOULD YOU RATHER","Would you rather have a late-night conversation or an all-day date?"],["BOLD","Tell me one harmless secret you've never told me."],["DARE","Send a 5-second voice note saying whatever comes to mind first."],["DEEP","What quality do you value most in someone you're close to?"],["FUNNY","Invent the funniest fake reason we would get kicked out of a restaurant."],["QUESTION","What is your ideal kind of date?"],["FLIRTY","What is one thing I do that you find cute?"],["DARE","Let me choose your next status/caption for 10 minutes."],["BOLD","Finish this sentence: 'If we were alone right now, I would…'"],["QUESTION","What is something you've wanted us to do together?"],["DARE","Send a picture using your most ridiculous face."],["DEEP","What makes you trust someone?"],["MYSTERY","You get to ask me one question, and I have to answer honestly."],["QUESTION","What is your biggest green flag in someone?"],["QUESTION","What is a small thing that can instantly make your day better?"],["DARE","Send a GIF that perfectly describes your mood right now."],["FLIRTY","What is your favorite thing about talking to me?"],["DEEP","What is something you are currently trying to improve about yourself?"],["WOULD YOU RATHER","Would you rather go on a beach date or a city date?"],["QUESTION","What is one thing you could talk about for hours?"],["DARE","Send a photo of your current view."],["BOLD","What is something you find difficult to admit to people?"],["FUNNY","Describe your dating life using the title of a movie."],["QUESTION","What kind of attention makes you feel most special?"],["DARE","Send a voice note using a funny accent."],["FLIRTY","What would make you blush if I said it to you?"],["DEEP","What does loyalty mean to you?"],["QUESTION","What is one memory you will never forget?"],["DARE","Let me ask you one yes-or-no question that you must answer honestly."],["WOULD YOU RATHER","Would you rather receive flowers or a surprise date?"],["BOLD","What is something you have never asked me because you were nervous?"],["QUESTION","What is one quality you want in a future partner?"],["QUESTION","Are you presently just celibate or a virgin?"],["DARE","Send your most-used emoji and explain why you use it so much."],["DEEP","What makes you feel safe enough to open up to someone?"],["FLIRTY","What is the most attractive personality trait someone can have?"],["QUESTION","What is your biggest relationship pet peeve?"],["DARE","Send a selfie with your current facial expression—no posing."],["FUNNY","If we had a reality show, what would it be called?"],["QUESTION","What is something you wish you could do more often?"],["BOLD","What is one thing you would want to know before dating someone?"],["DARE","Send the funniest photo currently in your gallery."],["DEEP","What is one lesson a past relationship or friendship taught you?"],["WOULD YOU RATHER","Would you rather have deep conversations or playful teasing?"],["QUESTION","What is your love language?"],["FLIRTY","What kind of compliment actually gets your attention?"],["DARE","Send a 10-second voice note describing me in one sentence."],["QUESTION","What is something people often misunderstand about you?"],["BOLD","What is one boundary you will never compromise on?"],["FUNNY","What is your most random talent?"],["DARE","Pick a song for me to listen to and tell me why."],["DEEP","What does a healthy relationship look like to you?"],["QUESTION","What is your favorite way to spend a free evening?"],["FLIRTY","What kind of date would make you genuinely excited?"],["WOULD YOU RATHER","Would you rather travel together or stay home together?"],["DARE","Send a picture of your shoes right now."],["QUESTION","What is one thing you appreciate about our conversations?"],["BOLD","What is something you are curious to know about me?"],["DEEP","How do you usually show someone that you care?"],["FUNNY","If your personality were a food, what would it be?"],["DARE","Make up a three-word nickname for me."],["QUESTION","What is your favorite childhood memory?"],["FLIRTY","What kind of eye contact feels impossible to ignore?"],["QUESTION","What is one thing you need from someone to feel respected?"],["DARE","Send a random emoji and let me guess what it means."],["BOLD","What is something you would only tell someone you really trust?"],["DEEP","What is something you have learned about yourself recently?"],["WOULD YOU RATHER","Would you rather have a surprise gift or a surprise experience?"],["QUESTION","What is one habit you would like to break?"],["DARE","Send a photo of something that made you smile today."],["FLIRTY","What is one thing about me that you are curious about?"],["QUESTION","What makes someone unforgettable to you?"],["BOLD","What is a question you hope I choose next?"],["DEEP","What does emotional intimacy mean to you?"],["DARE","Send a voice note saying the first word that comes to mind when you see my name."],["FUNNY","Create a ridiculous headline about us."],["QUESTION","What is one place you would love to visit with someone special?"],["FLIRTY","What kind of flirting do you secretly enjoy?"],["DARE","Choose one: selfie, voice note, or GIF—and send it."],["MYSTERY","Ask me anything you want, and I get one question back."],["DEEP","What is one thing you hope your future self is proud of?"],["QUESTION","What is something you think two people should discuss before becoming serious?"],["BOLD","What is one thing you would never fake in a relationship?"]]
+
+const $=id=>document.getElementById(id);
+const state={room:null,me:null,name:null,unsub:null,mode:"wa",localReveal:null};
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function code(){return Math.random().toString(36).slice(2,8).toUpperCase();}
+function now(){return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});}
+function baseRoom(host){return {host,players:{[host]:{name:state.name,online:true}},turn:host,used:{},last:null,createdAt:Date.now()};}
+function playerIds(room){return Object.keys(room?.players||{});}
+function isHost(data){return data?.host===state.me;}
+function myTurn(data){return data?.turn===state.me;}
+function otherId(data){return playerIds(data).find(x=>x!==state.me);}
+function invite(){return location.origin+location.pathname+"?room="+state.room;}
+function addBubble(text,side="left"){
+  const d=document.createElement("div"); d.className="bubble "+side;
+  d.innerHTML=text+'<span class="meta">'+now()+' ✓✓</span>';
+  $("gameArea").appendChild(d); $("chat").scrollTop=$("chat").scrollHeight;
+}
+function renderNumbers(data){
+  const area=$("gameArea");
+  const used=data.used||{};
+  const grid=document.createElement("div"); grid.className="numbergrid";
+  for(let i=1;i<=100;i++){
+    const b=document.createElement("button");
+    b.className="num"+(used[i]?" used":"");
+    b.textContent=i; b.disabled=!!used[i] || !myTurn(data);
+    b.onclick=()=>pick(i,data);
+    grid.appendChild(b);
+  }
+  const old=$("numberCard"); if(old) old.remove();
+  const card=document.createElement("div"); card.id="numberCard"; card.className="card";
+  card.innerHTML=`<h3>${myTurn(data)?"Your turn 🎯":"Waiting for "+esc((data.players?.[data.turn]?.name)||"the other player")+"…"}</h3><p>Choose one of the remaining numbers.</p>`;
+  card.appendChild(grid); area.appendChild(card);
+}
+function renderRoom(data){
+  $("lobby").hidden=true; $("controls").hidden=false; $("leaveBtn").hidden=false; $("gameArea").hidden=false;
+  const ids=playerIds(data), ready=ids.length>=2;
+  $("status").textContent=ready?(myTurn(data)?"Your turn • choose 1–100":"Waiting for "+(data.players?.[data.turn]?.name||"the other player")):"Waiting for the second player…";
+  $("gameArea").innerHTML="";
+  addBubble(ready?`Room <b>${state.room}</b> is ready. ${myTurn(data)?"You":"Your partner"} goes first.`:`Room <b>${state.room}</b> created. Send the invite link to your partner.`);
+  if(!ready){
+    const c=document.createElement("div"); c.className="card"; c.innerHTML=`<h3>Invite your partner</h3><p>Room code: <b>${state.room}</b></p><button class="btn primary full" id="copy2">🔗 Copy invite link</button>`;
+    $("gameArea").appendChild(c); $("copy2").onclick=copyInvite; return;
+  }
+  renderNumbers(data);
+}
+async function watchRoom(){
+  if(state.unsub) state.unsub();
+  const r=ref(db,"rooms/"+state.room);
+  state.unsub=onValue(r,s=>{
+    const data=s.val();
+    if(!data){ alert("This room no longer exists."); location.href=location.pathname; return; }
+    renderRoom(data);
+    if(data.last && data.last.id!==state.localReveal){
+      state.localReveal=data.last.id;
+      $("rTag").textContent=data.last.tag;
+      $("rNumber").textContent="#"+data.last.n;
+      $("rText").textContent=data.last.text;
+      $("overlay").style.display="flex";
+    }
+  });
+}
+async function createRoom(){
+  state.name=($("nameInput").value.trim()||"Player 1").slice(0,18);
+  state.me=crypto.randomUUID(); state.room=code();
+  await set(ref(db,"rooms/"+state.room),baseRoom(state.me));
+  await set(ref(db,`rooms/${state.room}/players/${state.me}/name`),state.name);
+  await onDisconnect(ref(db,`rooms/${state.room}/players/${state.me}/online`)).set(false);
+  history.replaceState({}, "", "?room="+state.room);
+  await watchRoom();
+}
+async function joinRoom(){
+  state.name=($("nameInput").value.trim()||"Player 2").slice(0,18);
+  const c=$("codeInput").value.trim().toUpperCase();
+  if(!/^[A-Z0-9]{6}$/.test(c)) return alert("Enter a valid 6-character room code.");
+  const snap=await get(ref(db,"rooms/"+c));
+  if(!snap.exists()) return alert("Room not found.");
+  const data=snap.val(); if(playerIds(data).length>=2) return alert("That room already has two players.");
+  state.me=crypto.randomUUID(); state.room=c;
+  await update(ref(db,"rooms/"+c),{[`players/${state.me}`]:{name:state.name,online:true}});
+  await onDisconnect(ref(db,`rooms/${c}/players/${state.me}/online`)).set(false);
+  history.replaceState({}, "", "?room="+c);
+  await watchRoom();
+}
+async function pick(n,data){
+  if(!myTurn(data) || data.used?.[n]) return;
+  const [tag,text]=prompts[n-1];
+  const next=otherId(data)||state.me;
+  const id=crypto.randomUUID();
+  await update(ref(db,"rooms/"+state.room),{[`used/${n}`]:true,last:{id,n,tag,text,by:state.me,at:Date.now()},turn:next});
+}
+$("doneBtn").onclick=()=>{$("overlay").style.display="none";};
+$("createBtn").onclick=createRoom;
+$("joinBtn").onclick=()=>{$("joinArea").hidden=false;};
+$("joinRoomBtn").onclick=joinRoom;
+$("copyBtn").onclick=copyInvite;
+$("randomBtn").onclick=async()=>{const s=await get(ref(db,"rooms/"+state.room));const d=s.val();if(!myTurn(d))return alert("It's not your turn.");const a=[...Array(100)].map((_,i)=>i+1).filter(n=>!d.used?.[n]);if(a.length)pick(a[Math.floor(Math.random()*a.length)],d);};
+$("switchBtn").onclick=async()=>{const s=await get(ref(db,"rooms/"+state.room));const d=s.val();const o=otherId(d);if(o)await update(ref(db,"rooms/"+state.room),{turn:o});};
+$("wa").onclick=()=>setMode("wa"); $("snap").onclick=()=>setMode("snap");
+$("leaveBtn").onclick=()=>{if(confirm("Leave this room?"))location.href=location.pathname;};
+async function copyInvite(){try{await navigator.clipboard.writeText(invite());alert("Invite link copied!");}catch(e){prompt("Copy this invite link:",invite());}}
+function setMode(m){state.mode=m;$("app").classList.toggle("snap",m==="snap");$("wa").classList.toggle("active",m==="wa");$("snap").classList.toggle("active",m==="snap");$("avatar").textContent=m==="wa"?"❤️":"👻";}
+const q=new URLSearchParams(location.search).get("room");
+if(q){$("joinArea").hidden=false;$("codeInput").value=q.toUpperCase();}
+</script>
+</body>
+</html>
